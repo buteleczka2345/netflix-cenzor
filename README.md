@@ -1,8 +1,6 @@
-# Netflix Cenzor v4.8.3
+# Netflix Cenzor v4.5.2
 
 Rozszerzenie Chrome (Manifest V3), które **wycisza przekleństwa w filmach i serialach na Netflixie** — dokładnie wtedy, gdy padają, bez pobierania i bez modyfikowania strumienia wideo.
-
-Projekt powstał z userscriptu „Netflix Cenzor" (wersja 4.8.3), który został przeniesiony do natywnego rozszerzenia Chrome. Logika wyciszania jest 1:1 ta sama — zmieniło się tylko opakowanie.
 
 > ⚠️ To narzędzie **nie obchodzi** ochrony regionalnej ani DRM Netflixa. Pracuje wyłącznie na warstwie odtwarzacza w Twojej przeglądarce, na Twoim własnym koncie.
 
@@ -48,10 +46,23 @@ Długość ciszy **nie** liczona jest jako liczba liter. Każdy znak dostaje wag
 
 To znacznie lepiej odwzorowuje polską fonetykę niż suma liter. Czasy są ciągłe, a ostatnie słowo w kwestii kończy się dokładnie na `endTime`.
 
-### Trzy paski należą do lektora, nie do filmu
+### Bufor, trzymanie i tempo tekstu
 
-Bufor i czas trzymania ciszy są skalowane przez **tempo tekstu**, a to tempo jest ustawiane per lektor — kontraktor mówiący szybko potrzebuje innych ustawień niż spokojny narrator. Dlatego w 4.8.3 dodano **profile lektorów**:
+Bufor i czas trzymania ciszy są skalowane przez **tempo tekstu** — ustawiasz, jakim tempem liczymy okna, niezależnie od prędkości odtwarzania filmu. Tryb `Auto` kopiuje tempo tekstu z tempa filmu, więc przy zmianie prędkości odtwarzania ustawienia same się dostosowują.
 
+## Funkcje
+
+- **Wyciszanie przekleństw w napisach** — 55 domyślnych wzorców (polskie + angielskie), z obsługą `*` (np. `kurw*` łapie `kurwa`, `kurwy`, `kurwać`).
+- **Naprawa odcinków (SPA)** — Netflix nie przeładowuje strony przy przejściu do kolejnego odcinka, więc stare cue'y zostawały w pamięci i cisza pojawiała się cyklicznie „w złych miejscach". Skrypt śledzi ID odcinka z adresu (`/watch/<id>`) i przy zmianie czyści stare cue'y oraz natychmiast przywraca dźwięk.
+- **Łączenie fragmentów napisu spacją** — Netflix dzieli jedną kwestię na kilka bloków; sklejanie bez spacji tworzyło „słowa" typu `kurwaco`, przez co końcowe przekleństwo przepuszczało ciszę.
+- **Interpunkcja w wzorcach** — wpis `kurwa.` jest czyszczony z brzegów i działa jak `kurwa` (łapie też `kurwa,` i `kurwę?`).
+- **Lista słów, którą edytujesz** — nowe wzorce dopisują się raz, potem możesz je usunąć i same nie wrócą.
+
+### Świadomie wycofane: profile lektorów
+
+W `content-main.js` została warstwa profili (`PROFILE_STORE_KEY`, `activeProfileId`, `applyProfile`), ale **nie ma do niej interfejsu** — `popup.html` nie zawiera żadnych kontrolek lektora, a `content-bridge.js` nie obsługuje wiadomości profili. Kod jest martwy: zapisuje się w localStorage, ale nie da się nim sterować z okna rozszerzenia.
+
+To celowe — funkcja została porzucona. Nie usuwaj tej warstwy, chyba że chcesz ją dokończyć; brakuje wtedy `importProfiles()` oraz obsługi wiadomości `ncz-apply-profiles` i `ncz-profile`.
 
 ## Instalacja (tryb dewelopera, ~2 minuty)
 
@@ -115,15 +126,3 @@ Popup zapisuje **na żywo**, gdy karta Netflix jest otwarta; gdy jej nie ma — 
 ## Licencja
 
 MIT — patrz [LICENSE](LICENSE).
-
-- wybór aktywnego lektora, „Zapisz jako", „Reset pasków", „Następny lektor",
-- profil trzyma: Wstecz (bufor), Przód (trzymaj), Tempo tekstu, Długość słowa, Precyzja,
-- **wspólne** dla wszystkich lektorów są: włącznik cenzora i lista słów.
-
-### Zmiany 4.8.3 względem 4.5.2
-
-1. **Problem z odcinkami** — Netflix to SPA: przejście do kolejnego odcinka nie przeładowuje strony, więc stare cue'y zostawały w pamięci i cisza pojawiała się cyklicznie „w złych miejscach". Skrypt śledzi teraz numer odcinka z adresu (`/watch/<id>`) i przy zmianie czyści stare cue'y oraz natychmiast przywraca dźwięk.
-2. **Lista przekleństw** — rozszerzona do **55 wzorców** (skurwysyn, spizd\*, wypizd\*, cip\*, dziwk\*, podjeb\*, wszystkie warianty pierdolenia i par). Nowe wzorce dopisują się do Twojej listy **raz** — potem możesz je usunąć, same nie wrócą.
-3. **Łączenie fragmentów napisu spacją** — Netflix dzieli jedną kwestię na kilka bloków; sklejanie bez spacji tworzyło „słowa" typu `kurwaco`, przez co końcowe przekleństwo przepuszczało ciszę.
-4. **Interpunkcja w wzorcach** — wpis `kurwa.` jest czyszczony z brzegów i działa jak `kurwa` (łapie też `kurwa,` i `kurwę?`).
-5. **Profile lektorów** — jak wyżej.

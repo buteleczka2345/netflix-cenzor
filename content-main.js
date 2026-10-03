@@ -1140,33 +1140,6 @@
     else schedulePanel();
   }
 
-  // Wczytanie magazynu lektorów z kopii z chrome.storage (ncz-store-pull).
-  // Zdarza się to PO pierwszym zapisie profilu przy starcie, dlatego zamiast
-  // nadpisywać strukturę (jest const) podmieniamy jej zawartość.
-  function importProfiles(json, matchId) {
-    try {
-      if (typeof json !== 'string' || !json) return false;
-      GM_setValue(PROFILE_STORE_KEY, json);      // trafia do localStorage
-      const fresh = loadProfileStore();          // czyta juz swiezy zapis
-      if (!fresh.list.length) return false;
-      profileStore.list = fresh.list;
-      profileStore.activeId = fresh.activeId;
-      activeProfileId = fresh.activeId;
-      // Jesli kopia ustawien pasuje do jakiegos lektora, wybieramy go —
-      // inaczej po refreshu pokazywalby sie inny lektor niz ten, ktory
-      // zostal ustawiony w popupie ("wracalo samo").
-      if (matchId && fresh.list.some(function (p) { return p.id === matchId; })) {
-        activeProfileId = matchId;
-      }
-      hydrateStateFromProfile();
-      replan();
-      saveProfileStore();
-      console.log('[Cenzor v4.8.3 EXT] wczytano lektorow z kopii:', fresh.list.length,
-                  '| aktywny:', (activeProfile() || {}).name);
-      return true;
-    } catch (e) { return false; }
-  }
-
 // publiczne API dla mostku
   try {
     window.ncz = window.ncz || {};
@@ -1198,19 +1171,6 @@
         replan();           // nowe tempo/bufor => nowe okna ciszy
         return true;
       },
-      applyProfile: function (id) {
-        if (!applyProfile(String(id || ''))) return false;
-        return true;
-      },
-      createProfile: function (name, fromCurrent) {
-        const p = createProfile(name, fromCurrent !== false);
-        console.log('[Cenzor v4.8.3 ext] zapisano lektora:', p.name);
-        return true;
-      },
-      deleteProfile: function (id) { return !!deleteProfile(String(id || '')); },
-      renameActiveProfile: function (name) { renameActiveProfile(name); return true; },
-      resetActiveProfile: function () { resetActiveProfile(); return true; },
-      nextProfile: function () { return !!nextProfile(); },
       status: function () {
         return {
           cueMode: cueMode, cues: cues.length, windows: windows.length,
@@ -1241,21 +1201,6 @@
             reqId: d.reqId, settings: window.ncz.getSettings() }, '*');
         } else if (d.type === 'ncz-apply-settings') {
           window.ncz.applySettings(d.settings || {});
-        } else if (d.type === 'ncz-apply-profiles') {
-          // Kopie lektorow z chrome.storage - maja pierwszenstwo nad tym,
-          // co strona zdazyla zapisac staro przed ncz-store-pull.
-          importProfiles(d.profiles || '', d.matchId || '');
-        } else if (d.type === 'ncz-profile') {
-          // Operacje na profilach lektora z popupu.
-          if (d.op === 'apply' && d.id) window.ncz.applyProfile(d.id);
-          else if (d.op === 'create') window.ncz.createProfile(d.name, d.fromCurrent !== false);
-          else if (d.op === 'delete' && d.id) window.ncz.deleteProfile(d.id);
-          else if (d.op === 'rename') window.ncz.renameActiveProfile(d.name);
-          else if (d.op === 'reset') window.ncz.resetActiveProfile();
-          else if (d.op === 'next') window.ncz.nextProfile();
-          // Po każdej zmianie profilu odsyłamy świeży stan do popupu.
-          window.postMessage({ source: 'ncz-main', type: 'ncz-state-push',
-            reqId: d.reqId, state: window.ncz.getSettings() }, '*');
         }
       } catch (e) { /*ignorujemy*/ }
     });

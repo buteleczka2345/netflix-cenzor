@@ -1,16 +1,17 @@
-/* Netflix Cenzor v4.8.3 EXT – popup (ustawienia + profile lektorów)
+/* Netflix Cenzor v4.8.3 EXT – popup (ustawienia)
  *
  * Źródłem prawdy jest kopia w chrome.storage (BACKUP_KEY). Karta Netflix
  * jest traktowana jako żywy odbiornik zmian: po każdej zmianie suwaka
- * popup probuje zastosować ją na żywo (tabs.sendMessage -> bridge -> MAIN).
- *
- * NOWE w 4.8.3: profil lektorów. Trzy paski (Wstecz / Przód / Tempo tekstu)
- * należą do lektora, nie do filmu — każdy ma własne ustawienia.
+ * popup próbuje zastosować ją na żywo (tabs.sendMessage -> bridge -> MAIN).
  */
 (function () {
   'use strict';
 
   var BACKUP_KEY = 'ncz4_backup_ncz4_settings_v2';
+  // Stan zwinietej listy slow trzymamy OSOBNO, zeby zapisywac go
+  // natychmiast (bez czekania na wczytanie kopii). Dzieki temu
+  // stan przezywa natychmiastowe zamkniecie popupu.
+  var FOLD_KEY = 'ncz4_words_collapsed';
   // Lista słów z userscriptu 4.8.3 (55 wzorców, wersja WORDS_DEFAULTS_VER=3).
   // Angielskie wzorce z poprzednich wersji zostawiamy — nie szkodzą, a
   // ktoś ich używał.
@@ -29,13 +30,15 @@
   var DEF = {
     enabled: true, bufferMs: 750, holdMs: 0, lenMode: 'normal',
     precise: true, minimized: false, panelOpen: false, words: DEFAULT_WORDS,
-    textRate: 0.6, textAuto: false, showHelp: false
+    textRate: 0.6, textAuto: false, showHelp: false,
+    // stan zwinięcia ramki listy słów (zapamiętywany w chrome.storage)
+    wordsCollapsed: false
   };
 
   var $ = function (id) { return document.getElementById(id); };
   var elOn, elBuf, elBufV, elHold, elHoldV, elLen, elPrec, elWords, elStatus;
   var elTextRate, elTextRateV, elTextAuto, elShowHelp, elDiag;
-  var elProf, elProfName, elProfDel, elProfReset, elProfNext;
+  var elWordsBox, elWordsToggle, elWordsHead;
 
   function fmtRate(r) { r = +r || 0; return r.toFixed(2) + 'x'; }
   function clampTR(r) { r = +r; if (!isFinite(r) || r <= 0) return 1;
@@ -69,14 +72,14 @@
   }
 /* ---------- wypełnianie kontrolek ---------- */
 
-  // ncz.getSettings() zwraca { settings, profiles: { activeId, list } }.
-  // Backup ze storage ma kształt płaskiego settings — przyjmujemy oba.
+  // ncz.getSettings() zwraca { settings, profiles }. Backup ze storage ma
+  // kształt płaskiego settings — przyjmujemy oba.
   function unwrap(payload) {
     if (!payload) return null;
     if (payload.settings && typeof payload.settings === 'object') {
-      return { settings: payload.settings, profiles: payload.profiles || null };
+      return { settings: payload.settings };
     }
-    return { settings: payload, profiles: null };
+    return { settings: payload };
   }
 
   function fill(s) {
@@ -97,24 +100,39 @@
     elShowHelp.checked = !!s.showHelp;
     var hb = $("helpbox");
     if (hb) hb.style.display = s.showHelp ? "block" : "none";
+    applyWordsFold(!!s.wordsCollapsed);
+  }
+
+  // Zwijanie ramki listy słów. Stan leży w backupie (chrome.storage),
+  // więc po zamknięciu i ponownym otwarciu popupu ramka zostaje zwinięta.
+  // refresh() woła fill() przy każdym otwarciu, dlatego stan jest tu
+  // stosowany przy każdym odczycie, a nie tylko przy kliknięciu.
+  var wordsCollapsed = false;
+
+  function applyWordsFold(collapsed) {
+    wordsCollapsed = !!collapsed;
+    if (elWordsBox) elWordsBox.style.display = wordsCollapsed ? 'none' : 'block';
+    if (elWordsToggle) elWordsToggle.textContent = wordsCollapsed ? '▸' : '▾';
+  }
+
+  function toggleWordsFold() {
+    applyWordsFold(!wordsCollapsed);
+    // 1) NATYCHMIASTOWY zapis do osobnego klucza - jedyne miejsce,
+    //    ktore na pewno zdazy sie wykonac przed zamknieciem popupu.
+    try {
+      chrome.storage.local.set({
+        [FOLD_KEY]: wordsCollapsed ? 1 : 0,
+        ncz4_fold_ts: Date.now()
+      });
+    } catch (e) {}
+    // 2) pelny zapis ustawien (wolniejszy, asynchroniczny).
+    // Zapis NATYCHMIASTOWY, nie przez autoSave(): autoSave odracza zapis o 300 ms
+    // (debounce pod suwakami), a popup zamyka sie od razu po kliknieciu -
+    // stan zwinietej listy by wtedy przepadl i ramka znowu sie rozwijala.
+    save(true);
   }
 
   // Lista lektorów w select + blokada przycisków przy jednym lektorze.
-  function fillProfiles(p) {
-    if (!p || !p.list || !p.list.length) return;
-    elProf.innerHTML = '';
-    for (var i = 0; i < p.list.length; i++) {
-      var o = document.createElement('option');
-      o.value = p.list[i].id;
-      o.textContent = p.list[i].name;
-      elProf.appendChild(o);
-    }
-    elProf.value = p.list.some(function (x) { return x.id === p.activeId; })
-      ? p.activeId : p.list[0].id;
-    elProfDel.disabled = p.list.length <= 1;
-    elProfNext.disabled = p.list.length <= 1;
-  }
-
   function collect() {
     return {
       enabled: elOn.checked,
@@ -125,6 +143,7 @@
       textRate: clampTR(elTextRate.value),
       textAuto: elTextAuto.checked,
       showHelp: elShowHelp.checked,
+      wordsCollapsed: wordsCollapsed,
       words: elWords.value
     };
   }
@@ -137,7 +156,14 @@
     // wiec nie wolno jej odpowiedzia nadpisywac popupu — stad "wracalo samo".
     var bak0 = null;
     try { bak0 = await loadBackup(); } catch (e0) {}
-fill(bak0 || DEF);
+    fill(bak0 || DEF);
+    // Stan zwinietej ramki listy slow: OSTATNIE slowo ma osobny klucz
+    // (zapis natychmiastowy przy kliknieciu). Gdy go nie ma - spadamy
+    // na stan z kopii ustawien.
+    try {
+      var fg = await chrome.storage.local.get([FOLD_KEY]);
+      if (fg && fg[FOLD_KEY] !== undefined) applyWordsFold(fg[FOLD_KEY] === 1);
+    } catch (e1) {}
     var tab = await netflixTab();
     if (tab) {
       try {
@@ -146,7 +172,6 @@ fill(bak0 || DEF);
         if (u && u.settings) {
           // Ustawienia z karty sa nowsze tylko wtedy, gdy w kopii ich nie ma.
           if (!bak0) fill(u.settings);
-          if (u.profiles) fillProfiles(u.profiles);
         }
         diag('Karta Netflix podlaczona - zmiany dzialaja na zywo.');
       } catch (e) {
@@ -196,27 +221,6 @@ fill(bak0 || DEF);
     status('Zapisano kopię. Otwórz Netflix, żeby zastosować.');
   }
 
-  /* ---------- operacje na lektorach ---------- */
-
-  // MAIN wykonuje operację i odsyła świeży stan -> przerysowujemy kontrolki.
-  async function profileOp(op, extra) {
-    var tab = await netflixTab();
-    if (!tab) { status('Otwórz kartę Netflix, aby zarządzać lektorami.'); return null; }
-    try {
-      var msg = Object.assign({ ncz: 'profile', op: op }, extra || {});
-      var res = await chrome.tabs.sendMessage(tab.id, msg);
-      var st = res && res.state;
-      if (st) {
-        fill(st.settings || DEF);
-        fillProfiles(st.profiles);
-      }
-      return st;
-    } catch (e) {
-      status('Nie udało się połączyć z kartą Netflix. Odśwież ją (F5).');
-      return null;
-    }
-  }
-
   /* ---------- start ---------- */
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -226,8 +230,8 @@ fill(bak0 || DEF);
     elTextRate = $('st-textrate'); elTextRateV = $('st-textrateval');
     elTextAuto = $('st-textauto'); elShowHelp = $('st-showhelp');
     elWords = $('st-words'); elStatus = $('status'); elDiag = $('diag');
-    elProf = $('st-prof'); elProfName = $('st-profname');
-    elProfDel = $('btn-profdel'); elProfNext = $('btn-profnext');
+    elWordsBox = $('st-wordsbox'); elWordsToggle = $('btn-wordstoggle');
+    elWordsHead = $('st-wordshead');
 
     elBuf.addEventListener('input', function () {
       elBufV.textContent = fmt(elBuf.value); autoSave();
@@ -264,37 +268,21 @@ fill(bak0 || DEF);
       wordsTimer = setTimeout(autoSave, 800);
     });
 
-    // --- lektorzy ---
-    elProf.addEventListener('change', function () {
-      profileOp('apply', { id: elProf.value }).then(function () { autoSave(); });
-    });
-    $('btn-profsave').addEventListener('click', function () {
-      var name = (elProfName.value || '').trim();
-      profileOp('create', { name: name, fromCurrent: true }).then(function (st) {
-        if (st) { elProfName.value = ''; autoSave(); }
+    // --- zwijanie listy słów (stan idzie do chrome.storage) ---
+    if (elWordsToggle) {
+      elWordsToggle.addEventListener('click', function (e) {
+        e.stopPropagation();      // klik nie moze odpalic handleru naglowka
+        toggleWordsFold();
       });
-    });
-    elProfName.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      $('btn-profsave').click();
-    });
-    elProfDel.addEventListener('click', function () {
-      var id = elProf.value;
-      var opt = elProf.options[elProf.selectedIndex];
-      if (!opt) return;
-      if (!confirm('Usunąć lektora "' + opt.text + '"?\nUstawienia tego lektora znikną.')) return;
-      profileOp('delete', { id: id }).then(function (st) { if (st) autoSave(); });
-    });
-    $('btn-profreset').addEventListener('click', function () {
-      var opt = elProf.options[elProf.selectedIndex];
-      if (!confirm('Przywrócić fabryczne paski (750 / 0 / 0,6x) dla "' +
-        (opt ? opt.text : 'tego lektora') + '"?')) return;
-      profileOp('reset', {}).then(function (st) { if (st) autoSave(); });
-    });
-    $('btn-profnext').addEventListener('click', function () {
-      profileOp('next', {}).then(function (st) { if (st) autoSave(); });
-    });
+    }
+    // Kliknięcie w sam nagłówek też zwija/rozwija — wygodniejsze niż
+    // celowanie w mały przycisk.
+    if (elWordsHead) {
+      elWordsHead.addEventListener('click', function (e) {
+        if (e.target && e.target.closest && e.target.closest('.foldb')) return;
+        toggleWordsFold();
+      });
+    }
 
     $('btn-open').addEventListener('click', function () {
       try { chrome.tabs.create({ url: 'https://www.netflix.com/' }); } catch (e) {}

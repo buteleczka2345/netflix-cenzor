@@ -11,17 +11,12 @@
  *    chrome.storage (na wypadek zamkniętej karty),
  *  - MAIN po każdym GM_setValue śle tu lustrzaną kopię
  *    (localStorage strony -> chrome.storage).
- *
- * NOWE w 4.8.3: profil lektorów (ncz4_profiles_v1) ma własny
- * klucz kopii w chrome.storage i osobny kanał "ncz-profile",
- * żeby popup mógł tworzyć / kasować / przełączać lektorów.
  * ============================================================ */
 (function () {
   'use strict';
 
   var LS_PREFIX = 'ncz4ext:';
   var BACKUP_KEY = 'ncz4_backup_ncz4_settings_v2';      // klucz ustawień w GM
-  var PROFILE_KEY = 'ncz4_backup_ncz4_profiles_v1';      // klucz magazynu lektorów
   var pending = new Map();
   var reqSeq = 0;
 
@@ -52,13 +47,6 @@
         var mobj = {};
         mobj['ncz4_mirror_' + d.key] = d.value;
         mobj.ncz4_mirror_ts = (typeof d.ts === 'number') ? d.ts : Date.now();
-        // Magazyn lektorow jest tu WYJATKIEM: nikt inny go nie zapisuje
-        // (popup zarzadza lektorami przez MAIN), wiec mirror jest jedynym
-        // zrodlem kopii przetrwajacej odswiezenie karty.
-        if (d.key === 'ncz4_profiles_v1') {
-          mobj[PROFILE_KEY] = d.value;
-          mobj.ncz4_profiles_ts = mobj.ncz4_mirror_ts;
-        }
         chrome.storage.local.set(mobj);
       } catch (e) {}
     } else if (d.type === 'ncz-store-pull') {
@@ -69,7 +57,7 @@
       // wiec ignorowala NOWSZE z popupu i suwaki "wracaly same".
       (async function () {
         var got = {};
-        try { got = await chrome.storage.local.get([BACKUP_KEY, PROFILE_KEY]); } catch (e) { return; }
+        try { got = await chrome.storage.local.get([BACKUP_KEY]); } catch (e) { return; }
         var bak = got && got[BACKUP_KEY];
         // 1) ustawienia
         if (bak) {
@@ -81,38 +69,10 @@
               { source: 'ncz-bridge', type: 'ncz-apply-settings', settings: s }, '*');
           } catch (e1) {}
         }
-        // 2) magazyn lektorow (ncz4_profiles_v1) — niezalezny od ustawien
-        var pbak = got && got[PROFILE_KEY];
-        if (pbak) {
-          try { pageLSSet('ncz4_profiles_v1', pbak); } catch (e2) {}
-          // MAIN musi przestawic sie na te lektory (albo wybrac profil,
-          // ktorego paski odpowiadaja ustawieniom z backupu).
-          try {
-            var ps = JSON.parse(pbak);
-            var match = null;
-            if (ps && Array.isArray(ps.list)) {
-              match = ps.list.find(function (x) {
-                return x && x.bufferMs === s.bufferMs && x.holdMs === s.holdMs &&
-                       !!x.textAuto === !!s.textAuto &&
-                       Math.abs((x.textRate || 0) - (s.textRate || 0)) < 1e-9;
-              }) || null;
-            }
-            window.postMessage({ source: 'ncz-bridge', type: 'ncz-apply-profiles',
-              profiles: pbak, matchId: (match && match.id) || '' }, '*');
-            if (match) {
-              window.postMessage({ source: 'ncz-bridge', type: 'ncz-apply-settings',
-                settings: s }, '*');
-            }
-          } catch (e3) {}
-        }
       })();
     } else if (d.type === 'ncz-settings-push') {
       var p = pending.get(d.reqId);
       if (p) { pending.delete(d.reqId); try { p(d.settings); } catch (e) {} }
-    } else if (d.type === 'ncz-state-push') {
-      // Odpowiedź na operację profilu z popupu: zwracamy świeży stan.
-      var pp = pending.get(d.reqId);
-      if (pp) { pending.delete(d.reqId); try { pp(d.state); } catch (e) {} }
     }
   });
 // --- wiadomości z popupu ---
@@ -157,28 +117,6 @@
         } catch (e) {}
         try { sendResponse({ ok: true }); } catch (e) {}
         return false;
-      }
-
-      // Operacje na profilach lektorow (4.8.3). MAIN wykonuje zadanie
-      // i odsyła świeży stan -> trafia tu do sendResponse popupu.
-      if (msg.ncz === 'profile') {
-        var pid = 'p' + (++reqSeq) + '_' + Date.now();
-        var pto = setTimeout(function () {
-          var f = pending.get(pid);
-          if (f) { pending.delete(pid); try { f(null); } catch (e) {} }
-        }, 2500);
-        pending.set(pid, function (s) {
-          clearTimeout(pto);
-          try { sendResponse({ state: s }); } catch (e) {}
-        });
-        try {
-          window.postMessage({
-            source: 'ncz-bridge', type: 'ncz-profile',
-            op: msg.op || '', id: msg.id || '', name: msg.name || '',
-            fromCurrent: msg.fromCurrent !== false, reqId: pid
-          }, '*');
-        } catch (e) { try { sendResponse({ state: null }); } catch (e2) {} }
-        return true;
       }
 
       if (msg.ncz === 'toggle') {
