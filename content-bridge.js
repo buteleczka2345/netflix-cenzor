@@ -1,5 +1,5 @@
 /* ============================================================
- * Netflix Cenzor v4.8.3 EXT – content-bridge.js (świat ISOLATED)
+ * Netflix Cenzor v4.5.2 EXT – content-bridge.js (świat ISOLATED)
  * Pośrednik między stroną (content-main.js, świat MAIN)
  * a popupem / pamięcią chrome.storage.
  *

@@ -51,7 +51,7 @@
 // ==UserScript==
 // @name         Netflix Cenzor
 // @namespace    ncz.v4
-// @version      4.8.3
+// @version      4.5.2
 // @description  Wycisza przekleństwa. Tryb CUE: przechwytuje wewnętrzną tablicę napisów Netflixa i planuje wyciszenie PRZED ich faktycznym początkiem. Czas słowa liczony MODELEM SEGMENTOWYM (samogłoska 1.4, spółgłoska/dwuznak 0.8, półsamogłoska „i" 0.8 lub 0, interpunkcja 0.4) — odwzorowuje polską fonetykę lepiej niż suma liter. Czasy ciągłe, ostatnie słowo kończy się dokładnie na endTime. Bufor i trzymanie ciszy skalowane przez TEMPO TEKSTU. PROFILE LEKTORÓW: trzy paski z trybami zapamiętywane osobno dla każdego lektora. W tej kopii panel na stronie jest wyłączony — sterowanie z popupu rozszerzenia. Bez Pipera i bez lokalnego serwera.
 // @match        https://www.netflix.com/*
 // @grant        GM_setValue
@@ -539,7 +539,7 @@
     }
     if (profDelEl) profDelEl.disabled = profileStore.list.length <= 1;
     if (profNameEl) profNameEl.value = '';
-    if (ttlEl && p) ttlEl.textContent = 'Cenzor v4.8.3 · ' + p.name;
+    if (ttlEl && p) ttlEl.textContent = 'Cenzor v4.5.2 · ' + p.name;
     if (!p) return;
     // Suwaki pokazują wartości nowego profilu, nie poprzedniego.
     if (bufEl) bufEl.value = state.bufferMs;
@@ -1245,7 +1245,7 @@
     // Awaria: sprawdzamy co 500 ms napisy z DOM (jak w 3.1).
     setInterval(() => { if (!cueMode) checkSubtitle(); }, 500);
     requestAnimationFrame(tick);
-    console.log('[Cenzor v4.8.3 EXT] start. lektor="' + (activeProfile() || {}).name
+    console.log('[Cenzor v4.5.2 EXT] start. lektor="' + (activeProfile() || {}).name
       + '" bufor=' + state.bufferMs + ' trzymaj=' + state.holdMs
       + ' tempo=' + state.textRate + (state.textAuto ? ' (auto)' : '')
       + ' | cueMode=' + cueMode + ' cues=' + cues.length);

@@ -1,4 +1,4 @@
-/* Netflix Cenzor v4.8.3 EXT – popup (ustawienia)
+/* Netflix Cenzor v4.5.2 EXT – popup (ustawienia)
  *
  * Źródłem prawdy jest kopia w chrome.storage (BACKUP_KEY). Karta Netflix
  * jest traktowana jako żywy odbiornik zmian: po każdej zmianie suwaka
@@ -12,7 +12,7 @@
   // natychmiast (bez czekania na wczytanie kopii). Dzieki temu
   // stan przezywa natychmiastowe zamkniecie popupu.
   var FOLD_KEY = 'ncz4_words_collapsed';
-  // Lista słów z userscriptu 4.8.3 (55 wzorców, wersja WORDS_DEFAULTS_VER=3).
+  // Lista słów z userscriptu 4.5.2 (55 wzorców, wersja WORDS_DEFAULTS_VER=3).
   // Angielskie wzorce z poprzednich wersji zostawiamy — nie szkodzą, a
   // ktoś ich używał.
   var DEFAULT_WORDS = [

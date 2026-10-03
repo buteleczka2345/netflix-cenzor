@@ -1,9 +1,9 @@
-Netflix Cenzor v4.8.3 – ROZSZERZENIE CHROME (MV3) – INSTRUKCJA
+Netflix Cenzor v4.5.2 – ROZSZERZENIE CHROME (MV3) – INSTRUKCJA
 =================================================================
 
 Co to jest
 ---------
-To jest skrypt "Netflix Cenzor" w wersji 4.8.3 (userscript przeskoczył
+To jest skrypt "Netflix Cenzor" w wersji 4.5.2 (userscript przeskoczył
 z 4.5.0), przepakowany do prawdziwego rozszerzenia Chrome (Manifest V3).
 Logika wyciszania jest NIETKNIĘTA – 1:1 ten sam kod:
 przechwytywanie cue'ów (Array.prototype.push + blocks), model segmentowy
