@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Netflix Cenzor pl v4.8.3",
-  "version": "4.8.3",
+  "name": "Netflix Cenzor pl v4.5.2",
+  "version": "4.5.2",
   "description": "Wycisza przekleństwa na Netfliksie (tryb CUE, z profilami lektorów). Sterowanie z popupu.",
   "permissions": ["storage"],
   "host_permissions": ["https://www.netflix.com/*"],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Netflix Cenzor v4.8.3 – ustawienia",
+    "default_title": "Netflix Cenzor v4.5.2 – ustawienia",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",
