@@ -1,0 +1,92 @@
+Netflix Cenzor v4.8.3 – ROZSZERZENIE CHROME (MV3) – INSTRUKCJA
+=================================================================
+
+Co to jest
+---------
+To jest skrypt "Netflix Cenzor" w wersji 4.8.3 (userscript przeskoczył
+z 4.5.0), przepakowany do prawdziwego rozszerzenia Chrome (Manifest V3).
+Logika wyciszania jest NIETKNIĘTA – 1:1 ten sam kod:
+przechwytywanie cue'ów (Array.prototype.push + blocks), model segmentowy
+wag, tryb awaryjny DOM.
+
+Co zmienia pakiet (tylko technicznie, nie logika):
+- manifest.json – deklaracja rozszerzenia (MV3).
+- content-main.js – Twój skrypt + mały shim na górze, który zastępuje
+  GM_setValue / GM_getValue / GM_registerMenuCommand (localStorage
+  strony + synchronizacja). Uruchamiany w świecie MAIN, żeby patch
+  Array.prototype.push widział te same tablice co odtwarzacz Netflixa.
+- content-bridge.js – pośrednik (świat ISOLATED) między stroną
+  a popupem / chrome.storage.
+- popup.html / popup.js – okienko rozszerzenia (ikona na pasku):
+  włącznik, Wstecz, Przód, długość słowa, precyzja, lista słów,
+  zapis NA ŻYWO do otwartej karty Netflix + kopia w chrome.storage.
+
+Instalacja (tryb deweloperski, 2 minuty)
+----------------------------------------
+1. Otwórz Chrome i wejdź na:  chrome://extensions
+2. Włącz w prawym górnym rogu "Tryb dewelopera".
+3. Kliknij "Załaduj rozpakowane" (Load unpacked).
+4. Wskaż ten folder:  netflix-cenzor-ext
+   (ten, w którym leży manifest.json).
+5. Przypnij ikonę: puzzel na pasku -> pinezka przy "Netflix Cenzor v4".
+6. Wejdź na https://www.netflix.com/ i ODŚWIEŻ kartę (F5) –
+   content script musiał wstrzyknąć się przy ładowaniu strony.
+7. Panel "Cenzor v4" pojawi się w prawym górnym rogu odtwarzacza
+   (jak w userscripcie). Popup rozszerzenia też działa.
+
+Używanie
+--------
+- Panel na stronie NIE ISTNIEJE (było wyłączone) — całe sterowanie
+  jest w popupie (ikona rozszerzenia na pasku).
+- Popup (ikona rozszerzenia): zapisuje NA ŻYWO, gdy karta Netflix
+  jest otwarta; gdy nie ma karty – zapisuje kopię, która zastosuje
+  się przy następnym odświeżeniu Netflixa.
+
+PROFILE LEKTORÓW (nowe w 4.8.3)
+------------------------------
+Trzy paski — Wstecz (bufor), Przód (trzymaj) i Tempo tekstu — należą
+do LEKTORA, nie do filmu. Kontra mówi szybko i trzeba go inaczej
+ustawić niż narratora.
+- Lista u góry popupu: wybór aktywnego lektora (wczytuje jego paski).
+- "Zapisz jako" — zapisuje bieżące paski pod nową nazwą i od razu
+  przełącza na nią (puste pole = nazwa nadawana automatycznie).
+- "Reset pasków" — fabryczne 750 / 0 / 0,6x dla wybranego lektora.
+- "Następny lektor" — cykliczna zmiana lektora.
+- Lista słów oraz włącznik cenzora są WSPÓLNE dla wszystkich lektorów.
+
+CO NAPRAWIONO W 4.8.3 (w stosunku do wersji rozszerzenia 4.5.2)
+---------------------------------------------------------------
+1. PROBLEM Z ODSWIEŻANIEM/ODCINKAMI. Netflix to aplikacja SPA: przejście
+   do kolejnego odcinka NIE przeładowuje strony, więc stare napisy
+   zostawały w pamięci i cisza pojawiała się cyklicznie w złych
+   miejscach ("co jakiś czas cisza bez zdania"). Teraz skrypt śledzi
+   numer odcinka z adresu (/watch/<id>) i przy zmianie czyści wszystkie
+   stare cue'y oraz natychmiast przywraca dźwięk.
+2. LISTA PRZEKLEŃSTW. Rozszerzona do 55 wzorców (skurwysyn, spizd*,
+   wypizd*, cip*, dziwk*, podjeb*, wszystkie warianty pierdolenia itd.).
+   Wzorce dodane w nowszej wersji dopisują się do Twojej listy RAZ —
+   potem możesz je usunąć, same nie wrócą.
+3. ŁĄCZENIE FRAGMENTÓW NAPISU SPACJĄ. Netflix dzieli jedną kwestię na
+   kilka bloków; sklejanie bez spacji tworzyło "słowa" typu
+   "kurwaco", przez co końcowe przekleństwo przepuszczało ciszę.
+   Teraz: "...kurwa co się dzieje" zamiast "...kurwaco się dzieje".
+4. Interpunkcja w wzorcach. Wpis "kurwa." (z kropką) jest czyszczony
+   z brzegów i działa jak "kurwa" — łapie też "kurwa," i "kurwę?".
+5. PROFILE LEKTORÓW (opisane wyżej).
+
+WAŻNE – uniknij podwójnego wyciszania
+-------------------------------------
+Jeśli masz jeszcze Tampermonkey z wersją userscriptową 4.5.0,
+WYŁĄCZ ją (albo całe rozszerzenie Tampermonkey na Netfliksie),
+bo dwa skrypty będą walczyć o video.muted. Ma zostać JEDEN:
+albo userscript, albo to rozszerzenie.
+
+Cofnięcie zmian
+---------------
+Usuń rozszerzenie z chrome://extensions. Ustawienia strony
+(localStorage Netflixa) możesz wyczyścić w DevTools (F12 ->
+Application -> Local Storage -> www.netflix.com -> klucze ncz4ext:*).
+
+Wymagania
+---------
+Chrome 111+ (świat MAIN w content scripts). Bez serwera, bez Pythona.

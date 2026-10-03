@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Netflix Cenzor pl v4.8.3",
+  "version": "4.8.3",
+  "description": "Wycisza przekleństwa na Netfliksie (tryb CUE, z profilami lektorów). Sterowanie z popupu.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://www.netflix.com/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Netflix Cenzor v4.8.3 – ustawienia",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.netflix.com/*"],
+      "js": ["content-bridge.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://www.netflix.com/*"],
+      "js": ["content-main.js"],
+      "run_at": "document_start",
+      "all_frames": false,
+      "world": "MAIN"
+    }
+  ],
+  "minimum_chrome_version": "111"
+}

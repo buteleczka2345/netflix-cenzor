@@ -1,0 +1,7 @@
+# Backupy i paczki robione lokalnie — nie w repo
+*.bak
+*.zip
+
+# Python
+__pycache__/
+*.pyc

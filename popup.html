@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<style>
+  body { width: 320px; margin: 0; padding: 12px 14px 14px; background: #141417; color: #eee;
+    font: 12px/1.5 -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  h1 { font-size: 14px; margin: 0 0 2px; }
+  h1 span { color: #e50914; }
+  .sub { color: #999; font-size: 11px; margin-bottom: 10px; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .val { min-width: 56px; text-align: right; color: #9fd; font-variant-numeric: tabular-nums; }
+  input[type=range] { flex: 1; accent-color: #e50914; }
+  textarea { width: 100%; box-sizing: border-box; background: #111; color: #ddd;
+    border: 1px solid #3c3c44; border-radius: 6px; padding: 6px; font: 11px/1.4 monospace; }
+  select { flex: 1; background: #111; color: #ddd; border: 1px solid #3c3c44;
+    border-radius: 6px; padding: 3px 6px; font-size: 11px; }
+  button { background: #2a2a30; border: 1px solid #3c3c44; color: #eee;
+    border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px; }
+  button.acc { background: #e50914; border-color: #e50914; color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  #status { color: #999; font-size: 11px; margin-top: 8px; min-height: 16px; }
+  .hint { color: #777; font-size: 10.5px; margin: 4px 0 6px; }
+  .head2 { margin: 12px 0 2px; padding-top: 8px; border-top: 1px solid #2c2c30;
+    font-weight: 700; font-size: 12px; color: #fff; }
+  .tag { font-weight: 400; font-size: 10.5px; color: #888; margin-left: 4px; }
+  input[type=text] { background: #111; color: #ddd; border: 1px solid #3c3c44;
+    border-radius: 6px; }
+  #diag { color: #6f6; }
+  #diag.ERR { color: #f90; }
+  .helpbox { background: #101014; border: 1px solid #3c3c44; border-radius: 6px;
+    padding: 8px 9px; margin-top: 8px; font-size: 11px; line-height: 1.5; color: #ccc;
+    max-height: 220px; overflow-y: auto; }
+  .helpbox b { color: #fff; }
+  .helpbox .hh { color: #9fd; font-weight: 700; margin: 6px 0 2px; }
+  .helpbox .hh:first-child { margin-top: 0; }
+  .btns { display: flex; gap: 8px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1><span>●</span> Cenzor v4.8.3</h1>
+  <div class="sub">Netflix – wyciszanie przekleństw (tryb CUE)</div>
+  <div class="sub" style="color:#6f6">Suwaki zapisują się same — nie trzeba klikać Zapisz.</div>
+  <div class="hint" id="diag">sprawdzam kartę…</div>
+  <div class="row"><label style="flex:1"><input type="checkbox" id="st-enabled"> Cenzor włączony</label></div>
+
+  <div class="head2">Lektorzy <span class="tag">trzy paski należą do lektora</span></div>
+  <div class="row" style="gap:6px">
+    <select id="st-prof" style="flex:1"></select>
+    <button id="btn-profdel" title="Usuń wybranego lektora (nie można usunąć ostatniego)">✕</button>
+  </div>
+  <div class="row" style="gap:6px">
+    <input type="text" id="st-profname" placeholder="nazwa nowego lektora" maxlength="32"
+      style="flex:1;background:#111;color:#ddd;border:1px solid #3c3c44;border-radius:6px;padding:4px 6px;font:11px monospace">
+    <button class="acc" id="btn-profsave" title="Zapisz bieżące paski pod nową nazwą">Zapisz jako</button>
+  </div>
+  <div class="row" style="gap:6px">
+    <button id="btn-profreset" style="flex:1">Reset pasków</button>
+    <button id="btn-profnext" style="flex:1">Następny lektor</button>
+  </div>
+
+<div class="row"><span title="Jak długo po słowie trzymamy jeszcze ciszę.">Przód</span><input type="range" id="st-hold" min="0" max="2000" step="50"><span class="val" id="st-holdval"></span></div>
+  <div class="row"><span>Długość słowa</span>
+    <select id="st-len">
+      <option value="off">wyłącz</option>
+      <option value="normal">normalnie</option>
+      <option value="strong">mocno</option>
+    </select>
+  </div>
+  <div class="row"><span>Tempo tekstu</span><input type="range" id="st-textrate" min="0.25" max="2.5" step="0.05"><span class="val" id="st-textrateval"></span></div>
+  <div class="row"><label style="flex:1"><input type="checkbox" id="st-textauto"> Auto (= tempo filmu)</label><button id="btn-text1x">1x</button></div>
+  <div class="row"><label style="flex:1"><input type="checkbox" id="st-prec"> Tylko samo słowo (nie cała kwestia)</label></div>
+  <div class="row"><span>Lista słów <span class="tag">nowe wzorce dopisują się same</span></span></div>
+  <textarea id="st-words" rows="5" spellcheck="false"></textarea>
+  <div class="row"><label style="flex:1"><input type="checkbox" id="st-showhelp"> ? Pokaz pomoc</label></div>
+  <div class="helpbox" id="helpbox" style="display:none">
+    <div class="hh">Sciaga</div>
+    <div><b>Slyszac poczatek - Wstecz w gore.</b> Cisza wchodzi za pozno.</div>
+    <div><b>Slyszac koncowke - Przod w gore.</b> Cisza puszcza za wczesnie.</div>
+    <div class="hh">Parametry</div>
+    <div><b>Wstecz (bufor)</b> - o ile wczesniej wlacza sie cisza.</div>
+    <div><b>Przod (trzymaj)</b> - jak dlugo cisza trzyma po koncu slowa.</div>
+    <div><b>Tempo tekstu</b> - jakim tempem liczymy okna, niezaleznie od predkosci filmu.</div>
+    <div><b>Auto</b> - zaznaczone = tempo tekstu kopiuje tempo filmu.</div>
+    <div><b>Dlugosc slowa</b> - dluzsze przeklestwo trzymane dluzej.</div>
+    <div><b>Tylko samo slowo</b> - wycisza ciasno samo slowo zamiast calej kwestii.</div>
+    <div class="hh">Lektorzy</div>
+    <div><b>Wstecz / Przód / Tempo tekstu</b> naleza do lektora, nie do filmu. Ustaw je pod jednym, potem wybierz drugiego i kliknij „Zapisz jako”.</div>
+    <div><b>Lista słów</b> jest wspolna dla wszystkich lektorow.</div>
+  </div>
+  <div class="btns">
+    <button id="btn-open">Otwórz Netflix</button>
+  </div>
+  <div id="status">Łączenie…</div>
+  <script src="popup.js"></script>
+</body>
+</html>
+  <div class="row"><span title="O ile milisekund wcześniej (przed słowem) włączamy ciszę.">Wstecz</span><input type="range" id="st-buf" min="0" max="3000" step="50"><span class="val" id="st-bufval"></span></div>
